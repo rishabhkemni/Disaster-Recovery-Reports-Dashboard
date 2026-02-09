@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Universal DR Dashboard | Datamotive Technologies</title>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+  <style>
+    :root {
+      --primary: #1e3a8a;        /* Calm enterprise blue */
+      --primary-soft: #3b82f6;
+      --secondary: #334155;
+      --success: #16a34a;
+      --danger: #dc2626;
+      --bg-main: #f1f5f9;
+      --card-bg: #ffffff;
+      --muted: #64748b;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: linear-gradient(135deg, #e2e8f0, #f8fafc);
+      min-height: 100vh;
+      padding: 20px;
+      color: #0f172a;
+    }
+
+    .container {
+      max-width: 1600px;
+      margin: auto;
+      background: var(--card-bg);
+      border-radius: 22px;
+      box-shadow: 0 25px 80px rgba(0,0,0,0.15);
+      overflow: hidden;
+    }
+
+    header {
+      background: linear-gradient(135deg, var(--primary), #0f172a);
+      color: white;
+      padding: 40px 30px 30px;
+      text-align: center;
+      position: relative;
+    }
+
+    header h1 {
+      font-size: 2.6em;
+      font-weight: 800;
+      margin-bottom: 8px;
+    }
+
+    header p {
+      font-size: 1.05em;
+      opacity: 0.9;
+    }
+
+    .branding {
+      margin-top: 12px;
+      font-size: 0.95em;
+      opacity: 0.85;
+    }
+
+    .upload-area {
+      margin: 40px;
+      padding: 70px;
+      text-align: center;
+      border-radius: 20px;
+      border: 3px dashed #cbd5f5;
+      background: #f8fafc;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .upload-area:hover,
+    .upload-area.dragover {
+      background: #eef2ff;
+      border-color: var(--primary-soft);
+      transform: translateY(-4px);
+      box-shadow: 0 20px 40px rgba(59,130,246,0.25);
+    }
+
+    .dashboard { display: none; }
+    .dashboard.show { display: block; }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 25px;
+      padding: 30px;
+      background: var(--bg-main);
+    }
+
+    .summary-card {
+      background: white;
+      padding: 28px;
+      border-radius: 16px;
+      text-align: center;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+      border-left: 6px solid var(--primary-soft);
+    }
+
+    .summary-card.pass { border-left-color: var(--success); }
+    .summary-card.fail { border-left-color: var(--danger); }
+
+    .summary-number {
+      font-size: 2.6em;
+      font-weight: 800;
+    }
+
+    .summary-label {
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 1.05em;
+    }
+
+    .infra-grid,
+    .sheets-grid,
+    .cycles-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+      gap: 25px;
+      padding: 30px;
+    }
+
+    .infra-card,
+    .sheet-card,
+    .cycle-card {
+      background: white;
+      padding: 26px;
+      border-radius: 16px;
+      box-shadow: 0 12px 30px rgba(0,0,0,0.08);
+    }
+
+    .cycle-card {
+      border-top: 5px solid var(--primary-soft);
+    }
+
+    .cycle-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 18px;
+    }
+
+    .cycle-status {
+      padding: 6px 18px;
+      border-radius: 999px;
+      font-weight: 700;
+      font-size: 0.85em;
+      color: white;
+    }
+
+    .cycle-status.pass { background: var(--success); }
+    .cycle-status.fail { background: var(--danger); }
+
+    .table-container {
+      margin: 20px;
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+      overflow: hidden;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th, td {
+      padding: 14px;
+      border-bottom: 1px solid #e5e7eb;
+      text-align: left;
+    }
+
+    th {
+      background: #f1f5f9;
+      font-size: 0.85em;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #334155;
+    }
+
+    tr:nth-child(even) {
+      background: #f8fafc;
+    }
+
+    .actions {
+      padding: 30px;
+      display: flex;
+      justify-content: center;
+      gap: 16px;
+      background: #f8fafc;
+    }
+
+    button {
+      padding: 14px 32px;
+      border-radius: 999px;
+      border: none;
+      background: linear-gradient(135deg, var(--primary), var(--primary-soft));
+      color: white;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.25s ease;
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 30px rgba(30,58,138,0.35);
+    }
+
+    footer {
+      padding: 18px;
+      text-align: center;
+      font-size: 0.9em;
+      color: var(--muted);
+      background: #f1f5f9;
+    }
+
+    @media print {
+      .upload-area, .actions { display: none; }
+      body { background: white; }
+    }
+
+    @media (max-width: 768px) {
+      .summary-grid,
+      .infra-grid,
+      .sheets-grid,
+      .cycles-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <header id="mainHeader">
+      <h1>Universal DR Dashboard</h1>
+      <p>JSON • Excel • Text → Unified Disaster Recovery Visualization</p>
+      <div class="branding">
+        Datamotive Technologies
+      </div>
+    </header>
+
+    <div class="upload-area" id="uploadArea">
+      <div style="font-size:4.5em; margin-bottom:16px;">📊</div>
+      <p><strong>Drop JSON / Excel (.xlsx) / Text (.txt)</strong> files here</p>
+      <input type="file" id="fileInput" accept=".json,.txt,.xlsx,.xls" hidden />
+    </div>
+
+    <div class="dashboard" id="dashboard">
+      <div class="summary-grid" id="summaryGrid"></div>
+      <div class="infra-grid" id="infraGrid"></div>
+      <div class="sheets-grid" id="sheetsGrid"></div>
+      <div class="cycles-grid" id="cyclesGrid"></div>
+      <div class="table-container" id="tableContainer"></div>
+
+      <div class="actions">
+        <button onclick="printReport()">Print</button>
+        <button onclick="clearDashboard()">Clear</button>
+      </div>
+    </div>
+
+    <footer>
+      © Datamotive Technologies • Created by <strong>Rishabh Kemni</strong>
+    </footer>
+  </div>
+  <script>
+    const uploadArea = document.getElementById('uploadArea');
+    const fileInput = document.getElementById('fileInput');
+    const dashboard = document.getElementById('dashboard');
+    const mainHeader = document.getElementById('mainHeader');
+    let currentFileType = '';
+
+    // Drag & Drop + Click handlers
+    uploadArea.addEventListener('click', () => fileInput.click());
+    ['dragover', 'dragenter'].forEach(e => 
+      uploadArea.addEventListener(e, (ev) => {
+        ev.preventDefault(); uploadArea.classList.add('dragover');
+      })
+    );
+    
+    uploadArea.addEventListener('drop', (e) => {
+      e.preventDefault(); uploadArea.classList.remove('dragover');
+      if (e.dataTransfer.files[0]) processFile(e.dataTransfer.files[0]);
+    });
+    
+    uploadArea.addEventListener('dragleave', () => 
+      uploadArea.classList.remove('dragover')
+    );
+    
+    fileInput.addEventListener('change', (e) => {
+      if (e.target.files[0]) processFile(e.target.files[0]);
+    });
+
+    function processFile(file) {
+      console.log('🔄 Processing:', file.name);
+      currentFileType = getFileType(file.name);
+      
+      if (file.name.match(/\.(xlsx|xls)$/i)) {
+        // Excel file
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          try {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, {type: 'array'});
+            const reportData = parseExcelWorkbook(workbook);
+            renderDRDashboard(reportData);
+          } catch (error) {
+            alert('❌ Error reading Excel file: ' + error.message);
+          }
+        };
+        reader.readAsArrayBuffer(file);
+      } else {
+        // JSON or Text file - read as text, parse JSON
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          try {
+            const report = JSON.parse(e.target.result);
+            renderDRDashboard(report);
+          } catch (error) {
+            alert(`❌ Invalid ${currentFileType} file - not valid JSON`);
+          }
+        };
+        reader.readAsText(file);
+      }
+    }
+
+    function getFileType(filename) {
+      if (filename.match(/\.(xlsx|xls)$/i)) return 'Excel';
+      if (filename.match(/\.json$/i)) return 'JSON';
+      if (filename.match(/\.txt$/i)) return 'Text';
+      return 'Unknown';
+    }
+
+    function parseExcelWorkbook(workbook) {
+      const report = { fileType: 'excel', sheets: {} };
+
+      workbook.SheetNames.forEach(sheetName => {
+        const worksheet = workbook.Sheets[sheetName];
+        const json = XLSX.utils.sheet_to_json(worksheet, {header: 1});
+        const cleanedData = json.filter(row => row.some(cell => cell !== null && cell !== ''));
+        const headers = cleanedData[0] || [];
+        const dataRows = cleanedData.slice(1);
+        
+        report.sheets[sheetName] = {
+          headers: headers,
+          data: dataRows,
+          raw: json
+        };
+
+        // Parse specific sheets
+        if (sheetName === 'Summary') report.summary = dataRows;
+        if (sheetName === 'SetupDetails') report.setup = dataRows;
+        if (sheetName === 'ReplicationTest') report.replicationTests = dataRows;
+      });
+
+      return report;
+    }
+
+    function renderDRDashboard(report) {
+      dashboard.classList.add('show');
+      
+      // Add file type badge
+      mainHeader.innerHTML += `
+        <div class="file-type-badge badge-${report.fileType || currentFileType.toLowerCase()}">
+          ${report.fileType || currentFileType}
+        </div>
+      `;
+      
+      if (report.fileType === 'excel') {
+        renderExcelDashboard(report);
+      } else {
+        renderJSONDashboard(report);
+      }
+    }
+
+    function renderExcelDashboard(report) {
+      // Summary stats
+      document.getElementById('summaryGrid').innerHTML = `
+        <div class="summary-card">
+          <div class="summary-number">${Object.keys(report.sheets).length}</div>
+          <div class="summary-label">Sheets Found</div>
+        </div>
+        ${report.replicationTests ? `
+        <div class="summary-card status-pass">
+          <div class="summary-number">${report.replicationTests.length - 1}</div>
+          <div class="summary-label">Replication Tests</div>
+        </div>` : ''}
+        ${report.setup ? `
+        <div class="summary-card">
+          <div class="summary-number">${report.setup.length - 1}</div>
+          <div class="summary-label">Setup Records</div>
+        </div>` : ''}
+      `;
+
+      // Setup details
+      if (report.setup && report.setup.length > 1) {
+        const setup = report.setup[1];
+        document.getElementById('infraGrid').innerHTML = `
+          <div class="infra-card">
+            <h3 style="color: #1e40af; margin-bottom: 15px;">🌐 Setup Details</h3>
+            <div><strong>Source:</strong> ${setup[0] || 'N/A'}</div>
+            <div><strong>Target:</strong> ${setup[1] || 'N/A'}</div>
+            <div><strong>Status:</strong> <span style="color: #10b981;">${setup[4] || 'N/A'}</span></div>
+            <div style="margin-top: 15px;">
+              <strong>Source URL:</strong><br>
+              <code style="background: #f3f4f6; padding: 8px; border-radius: 6px; display: block;">${setup[2] || 'N/A'}</code>
+            </div>
+            <div style="margin-top: 10px;">
+              <strong>Target URL:</strong><br>
+              <code style="background: #f3f4f6; padding: 8px; border-radius: 6px; display: block;">${setup[3] || 'N/A'}</code>
+            </div>
+          </div>
+        `;
+      }
+
+      // Sheets overview
+      document.getElementById('sheetsGrid').innerHTML = Object.keys(report.sheets).map(sheetName => `
+        <div class="sheet-card">
+          <h3 style="margin-bottom: 15px;">📄 ${sheetName}</h3>
+          <div><strong>Rows:</strong> ${report.sheets[sheetName].data.length}</div>
+          <div><strong>Headers:</strong> ${report.sheets[sheetName].headers.length}</div>
+        </div>
+      `).join('');
+
+      // Replication tests table
+      if (report.replicationTests && report.replicationTests.length > 1) {
+        document.getElementById('tableContainer').innerHTML = `
+          <h3 style="padding: 20px 20px 0; color: #1f2937;">🔄 Replication Tests</h3>
+          <table>
+            <thead>
+              <tr><th>ID</th><th>Protection Plan</th><th>VM</th><th>Status</th></tr>
+            </thead>
+            <tbody>
+              ${report.replicationTests.slice(1).map(row => `
+                <tr>
+                  <td>${row[0] || ''}</td>
+                  <td>${row[1] || ''}</td>
+                  <td>${row[2] || ''}</td>
+                  <td style="color: #10b981; font-weight: 600;">${row[3] || ''}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
+      }
+
+      document.getElementById('cyclesGrid').innerHTML = '';
+    }
+
+    function renderJSONDashboard(report) {
+      document.getElementById('summaryGrid').innerHTML = createSummaryCards(report);
+      document.getElementById('infraGrid').innerHTML = createInfraCards(report);
+      document.getElementById('cyclesGrid').innerHTML = createCycleCards(report);
+      document.getElementById('sheetsGrid').innerHTML = '';
+      document.getElementById('tableContainer').innerHTML = '';
+    }
+
+    function createSummaryCards(report) {
+      const meta = report.execution_metadata;
+      const summary = report.overall_summary;
+      return `
+        <div class="summary-card status-${meta.overall_status.toLowerCase()}">
+          <div class="summary-number">${meta.overall_status}</div>
+          <div class="summary-label">Overall Status</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-number">${summary.total_tests_all_cycles}</div>
+          <div class="summary-label">Total Tests</div>
+        </div>
+        <div class="summary-card status-pass">
+          <div class="summary-number">${summary.total_passed}</div>
+          <div class="summary-label">Passed</div>
+        </div>
+        <div class="summary-card status-fail">
+          <div class="summary-number">${summary.total_failed}</div>
+          <div class="summary-label">Failed</div>
+        </div>
+      `;
+    }
+
+    function createInfraCards(report) {
+      const primary = report.infrastructure.primary_site;
+      const dr = report.infrastructure.dr_site;
+      return `
+        <div class="infra-card">
+          <h3 style="color: #1e40af; margin-bottom: 15px;">🏠 Primary Site</h3>
+          <div style="font-size: 1.2em; font-weight: 600;">${primary.platform}</div>
+          <div style="color: #64748b;">${primary.region}</div>
+          <div style="font-family: monospace; background: rgba(0,0,0,0.05); padding: 8px 12px; border-radius: 8px;">${primary.ip}</div>
+        </div>
+        <div class="infra-card">
+          <h3 style="color: #059669; margin-bottom: 15px;">☁️ DR Site</h3>
+          <div style="font-size: 1.2em; font-weight: 600;">${dr.platform}</div>
+          <div style="color: #64748b;">${dr.region}</div>
+          <div style="font-family: monospace; background: rgba(0,0,0,0.05); padding: 8px 12px; border-radius: 8px;">${dr.ip}</div>
+        </div>
+      `;
+    }
+
+    function createCycleCards(report) {
+      return report.dr_cycles.cycles.map(cycle => {
+        const summary = cycle.test_summary;
+        const passRate = ((summary.passed / summary.total) * 100).toFixed(1);
+        return `
+          <div class="cycle-card" style="border-top-color: ${cycle.status === 'PASS' ? '#10b981' : '#dc2626'};">
+            <div class="cycle-header">
+              <div class="cycle-title">📊 Cycle ${cycle.cycle_number}: ${cycle.cycle_name}</div>
+              <div class="cycle-status status-${cycle.status.toLowerCase()}">${cycle.status}</div>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 20px;">
+              <div style="text-align: center;">
+                <div style="font-size: 2em; font-weight: 800; color: #10b981;">${summary.passed}</div>
+                <div style="color: #6b7280;">Passed</div>
+              </div>
+              <div style="text-align: center;">
+                <div style="font-size: 2em; font-weight: 800; color: #dc2626;">${summary.failed}</div>
+                <div style="color: #6b7280;">Failed</div>
+              </div>
+              <div style="text-align: center;">
+                <div style="font-size: 1.5em; font-weight: 600; color: #3b82f6;">${passRate}%</div>
+                <div style="color: #6b7280;">Pass Rate</div>
+              </div>
+            </div>
+            <div style="display: flex; gap: 20px; font-size: 0.95em;">
+              <div><strong>⏱️ Duration:</strong> ${cycle.duration_minutes} min</div>
+              <div><strong>📅 Start:</strong> ${new Date(cycle.start_time).toLocaleString()}</div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function printReport() {
+      window.print();
+    }
+
+    function clearDashboard() {
+      dashboard.classList.remove('show');
+      fileInput.value = '';
+      mainHeader.innerHTML = `
+        <h1>🚨 Universal DR Dashboard</h1>
+        <p><strong>JSON + Excel (.xlsx) + Text (.txt)</strong> → Beautiful visualizations</p>
+      `;
+      // Clear all sections
+      document.getElementById('summaryGrid').innerHTML = '';
+      document.getElementById('infraGrid').innerHTML = '';
+      document.getElementById('sheetsGrid').innerHTML = '';
+      document.getElementById('cyclesGrid').innerHTML = '';
+      document.getElementById('tableContainer').innerHTML = '';
+    }
+  </script>
+</body>
+</html>
