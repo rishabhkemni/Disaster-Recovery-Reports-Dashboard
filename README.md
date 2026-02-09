@@ -7,9 +7,7 @@ This tool allows teams to upload **JSON**, **Excel (.xlsx)**, or **text-based JS
 ---
 
 ## 🏢 Maintained by
-**Datamotive Technologies**
-
-Created by **Rishabh Kemni**
+**Rishabh Kemni**
 
 ---
 
